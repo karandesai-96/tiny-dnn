@@ -1,0 +1,17 @@
+include(../cmake/DownloadProject/DownloadProject.cmake)
+#set(gtest_disable_pthreads on) #TODO(randl): Windows?
+download_project(
+        PROJ benchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG master
+        UPDATE_DISCONNECTED 1
+)
+
+add_subdirectory(${benchmark_SOURCE_DIR} ${benchmark_BINARY_DIR})
+
+add_executable(tiny_dnn_benchmarks benchmark.cpp)
+target_link_libraries(tiny_dnn_benchmarks
+        ${project_library_target_name} ${REQUIRED_LIBRARIES} benchmark)
+
+#### Clang-tidy check
+#include(../cmake/clang-cxx-dev-tools.cmake)
