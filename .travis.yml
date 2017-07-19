@@ -1,6 +1,6 @@
-sudo: false
 dist: trusty
 osx_image: xcode8
+sudo: false
 
 language: cpp
 
@@ -48,18 +48,23 @@ branches:
 
 env:
   global:
-    - USE_TBB=ON
-    - BUILD_TESTS=ON
-    - BUILD_EXAMPLES=ON
-    - COVERALLS=ON
+    - USE_TBB=ON              # only OFF for clang on linux
+    - USE_SSE=OFF
+    - USE_AVX=OFF
+    - USE_DOUBLE=OFF
+    - BUILD_EXAMPLES=OFF
+    - BUILD_TESTS=OFF
+    - COVERALLS=OFF           # only ON for gcc on linux
+    - USE_ASAN=OFF            # only ON for gcc on linux
+    - CLANG_FORMAT_CHECK=OFF  # only ON for one job
 
   matrix:
-    - USE_SSE=OFF USE_AVX=OFF USE_DOUBLE=OFF
-    - USE_SSE=ON  USE_AVX=ON USE_DOUBLE=OFF
-    - USE_SSE=ON  USE_AVX=ON USE_DOUBLE=ON
+    - BUILD_TESTS=ON BUILD_EXAMPLES=ON CLANG_FORMAT_CHECK=ON
+    - BUILD_TESTS=ON USE_SSE=ON USE_AVX=ON
+    - BUILD_TESTS=ON USE_SSE=ON USE_AVX=ON USE_DOUBLE=ON
 
 matrix:
-  exclude: # On OSX g++ is a symlink to clang++ by default
+  exclude:
     - os: osx
       compiler: gcc
 
@@ -77,37 +82,41 @@ install:
 
 before_script:
   - if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$CXX" == "g++-4.9" ]; then
+      export USE_ASAN="ON";
+      export COVERALLS="ON";
       lcov --directory . --zerocounters;
-      cmake -DUSE_TBB=$USE_TBB
-            -DUSE_SSE=$USE_SSE
-            -DUSE_AVX=$USE_AVX
-            -DUSE_DOUBLE=$USE_DOUBLE
-            -DBUILD_TESTS=$BUILD_TESTS
-            -DCOVERALLS=$COVERALLS
-            -DUSE_ASAN=ON
-            -DBUILD_EXAMPLES=$BUILD_EXAMPLES .;
-    fi
-  - if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$CXX" == "clang++" ]; then
-      cmake -DUSE_SSE=$USE_SSE
-            -DUSE_AVX=$USE_AVX
-            -DBUILD_TESTS=$BUILD_TESTS
-            -DBUILD_EXAMPLES=$BUILD_EXAMPLES .;
-    fi
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      cmake -DUSE_TBB=$USE_TBB
-            -DUSE_AVX=OFF
-            -DBUILD_TESTS=$BUILD_TESTS .;
     fi
 
+  - if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$CXX" == "clang++" ]; then
+      export USE_TBB="OFF";
+    fi
+
+  - cmake -DUSE_TBB=$USE_TBB
+          -DUSE_SSE=$USE_SSE
+          -DUSE_AVX=$USE_AVX
+          -DUSE_DOUBLE=$USE_DOUBLE
+          -DBUILD_EXAMPLES=$BUILD_EXAMPLES
+          -DBUILD_TESTS=$BUILD_TESTS
+          -DCOVERALLS=$COVERALLS
+          -DUSE_ASAN=$USE_ASAN .;
+
 script:
-  - make -j2
-  - test/tiny_dnn_test
-  - if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$CXX" == "g++-4.8" ] && [ "$USE_SSE" == "ON" ] && [ "$USE_AVX" == "ON" ] && [ "$USE_DOUBLE" == "ON" ]; then
-      make clang-format-check;
+  - if [ "$CLANG_FORMAT_CHECK" == "ON" ]; then
+      make -j2 clang-format-check;
+    fi
+
+  - if [ "$BUILD_EXAMPLES" == "ON" ]; then
+      make -j2 examples_all;
+    fi
+
+  - if [ "$BUILD_TESTS" == "ON" ]; then
+      make -j2 generated_proto;
+      make -j2 tiny_dnn_test;
+      test/tiny_dnn_test;
     fi
 
 after_success:
-  - if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$CXX" == "g++-4.9" ]; then
+  - if [ "$COVERALLS" == "ON" ]; then
       lcov --directory . --capture --output-file coverage.info;
       lcov --remove coverage.info 'test/*' 'third_party/*' 'cereal/*' '/usr/*' 'tiny_dnn/io/caffe/caffe.pb.*' --output-file coverage.info;
       lcov --list coverage.info;

@@ -3,6 +3,7 @@ enable_testing()
 
 
 include(../cmake/DownloadProject/DownloadProject.cmake)
+
 #set(gtest_disable_pthreads on) #TODO(randl): Windows?
 download_project(
     PROJ googletest
@@ -59,8 +60,5 @@ endif()
 if(PROTO_CPP_GENERATE)
     add_dependencies(tiny_dnn_test generated_proto)
 endif()
-
-### Clang-tidy check
-include(../cmake/clang-cxx-dev-tools.cmake)
 
 cotire(print_device tiny_dnn_test)
