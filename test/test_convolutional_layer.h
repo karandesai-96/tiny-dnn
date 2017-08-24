@@ -526,10 +526,12 @@ TEST(convolutional, gradient_check) {
 
   convolutional_layer conv(in_width, in_height, kernel_size, in_channels,
                            out_channels);
-  std::vector<tensor_t> input_data = generate_test_data(
-    {1, 1, 1},
-    {in_width * in_height * in_channels,
-     kernel_size * kernel_size * in_channels * out_channels, out_channels});
+  conv.weight_init(parameter_init::gaussian());
+  conv.bias_init(parameter_init::gaussian());
+  conv.init_parameters();
+
+  std::vector<tensor_t> input_data =
+    generate_test_data({1}, {in_width * in_height * in_channels});
   std::vector<tensor_t> in_grad = input_data;  // copy constructor
   std::vector<tensor_t> out_data =
     generate_test_data({1}, {(in_width - 2) * (in_height - 2) * out_channels});
