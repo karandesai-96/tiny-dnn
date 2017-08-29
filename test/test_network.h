@@ -389,11 +389,11 @@ TEST(network, weight_init) {
   Parameter w2 = net[0]->parameter_at(0);
 
   for (size_t i = 0; i < w1.size(); i++) {
-    EXPECT_NEAR(*(w1.data_at(i)), 2.0, 1e-10);
+    EXPECT_NEAR(w1.data_at(i), 2.0, 1e-10);
   }
 
   for (size_t i = 0; i < w2.size(); i++) {
-    EXPECT_NEAR(*(w2.data_at(i)), 2.0, 1e-10);
+    EXPECT_NEAR(w2.data_at(i), 2.0, 1e-10);
   }
 }
 

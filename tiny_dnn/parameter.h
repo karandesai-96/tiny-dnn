@@ -48,8 +48,27 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
       shape_(width, height, in_channels * out_channels),
       trainable_(trainable),
       initialized_(false),
-      data_({shape_.size()}, 1),
+      data_({shape_.size()}, 0),
       grad_({1, shape_.size()}, 0) {}
+
+  /**
+   * Initializes an empty parameter taking in the dimensions.
+   *
+   * @param shape     shape of the parameter
+   * @param type      whether parameter is a weight or a bias
+   * @param trainable whether parameter will be updated while training
+   */
+  Parameter(const std::vector<size_t> &shape,
+            parameter_type type,
+            bool trainable = true)
+    : type_(type),
+      shape_(0, 0, 0),  // todo (karandesai) : remove after generalization
+      trainable_(trainable),
+      initialized_(false),
+      data_(shape, 0),
+      grad_(shape, 0) {
+    grad_.repeat(1, data_);
+  }
 
   // copy constructor
   Parameter(const Parameter &other)
@@ -61,6 +80,8 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
       grad_(*(other.grad())) {}
 
   shape3d shape() const { return shape_; }
+
+  std::vector<size_t> shape() const { return data_.shape(); }
 
   size_t size() const { return data_.size(); }
 
@@ -118,10 +139,14 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
 
   void clear_grads() { grad_.fill(float_t{0}); }
 
-  float_t *data_at(size_t i) { return &data_.host_at(i); }
+  template <typename... Args>
+  float_t &data_at(const Args... args) {
+    return data_.host_at(args...);
+  }
 
-  float_t *grad_at(size_t sample, size_t i) {
-    return &grad_.host_at(sample, i);
+  template <typename... Args>
+  float_t &grad_at(const size_t sample, const Args... args) {
+    return grad_.host_at(sample, args...);
   }
 
   // todo (karandesai) : introduce support for HDF
@@ -133,7 +158,7 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
             const int precision = std::numeric_limits<float_t>::digits10 + 2) {
     os << std::setprecision(precision);
     for (size_t i = 0; i < data_.size(); i++) {
-      os << *data_at(i) << " ";
+      os << data_at(i) << " ";
     }
   }
 
@@ -141,7 +166,7 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
             const int precision = std::numeric_limits<float_t>::digits10 + 2) {
     is >> std::setprecision(precision);
     for (size_t i = 0; i < data_.size(); i++) {
-      is >> *data_at(i);
+      is >> data_at(i);
     }
   }
   /** @} */  // Serialization - Deserialization Utilities
