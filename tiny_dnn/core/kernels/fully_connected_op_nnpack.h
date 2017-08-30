@@ -22,17 +22,17 @@ namespace kernels {
  * @param params
  * @param layer_parallelize
  */
-template <typename S1, typename S2, typename S3, typename S4>
+template <typename S1, typename S2>
 inline void fully_connected_op_nnpack(const Tensor<float, S1> &in_data,
-                                      const Tensor<float, S2> &weights,
-                                      const Tensor<float, S3> &bias,
-                                      Tensor<float, S4> &out_data,
+                                      Parameter &weights,
+                                      Parameter &bias,
+                                      Tensor<float, S2> &out_data,
                                       const bool layer_parallelize) {
 #ifdef CNN_USE_NNPACK
   // call singleton to initialize NNPACK
   NNPackInitializer::getInstance().initialize();
 
-  const float *kernel_ptr = weights.host_pointer(0, 0);
+  const float *kernel_ptr = &(weights.data_at(0, 0));
   const float *input_ptr  = in_data.host_pointer(0, 0);
   float *output_ptr       = out_data.host_pointer(0, 0);
 
@@ -59,7 +59,7 @@ inline void fully_connected_op_nnpack(const Tensor<float, S1> &in_data,
   // apply bias
   if (bias.size() > 0) {
     for_i(layer_parallelize, out_size,
-          [&](size_t i) { output_ptr[i] += bias.host_at(0, i); });
+          [&](size_t i) { output_ptr[i] += bias.data_at(i); });
   }
 #else
   CNN_UNREFERENCED_PARAMETER(in_data);
@@ -80,11 +80,11 @@ inline void fully_connected_op_nnpack(const Tensor<float, S1> &in_data,
  * @param params
  * @param layer_parallelize
  */
-template <typename S1, typename S2, typename S3, typename S4>
+template <typename S1, typename S2>
 inline void fully_connected_op_nnpack(const Tensor<double, S1> &in_data,
-                                      const Tensor<double, S2> &weights,
-                                      const Tensor<double, S3> &bias,
-                                      Tensor<double, S4> &out_data,
+                                      Parameter &weights,
+                                      Parameter &bias,
+                                      Tensor<double, S2> &out_data,
                                       const bool layer_parallelize) {
   // fallback to tiny-backend when float_t is double
   fully_connected_op_internal(in_data, weights, bias, out_data,

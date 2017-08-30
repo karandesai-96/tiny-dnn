@@ -26,11 +26,11 @@ namespace kernels {
  * @param params
  * @param layer_parallelize
  */
-template <typename S1, typename S2, typename S3, typename S4>
+template <typename S1, typename S2>
 inline void avx_fully_connected_forward_kernel(const Tensor<float, S1> &in_data,
-                                               const Tensor<float, S2> &W,
-                                               const Tensor<float, S3> &bias,
-                                               Tensor<float, S4> &out_data,
+                                               Parameter &weights,
+                                               Parameter &bias,
+                                               Tensor<float, S2> &out_data,
                                                const bool layer_parallelize) {
   size_t out_size = out_data.shape()[1], in_size = in_data.shape()[1],
          sample_size = in_data.shape()[0];
@@ -47,15 +47,16 @@ inline void avx_fully_connected_forward_kernel(const Tensor<float, S1> &in_data,
         auto in  = in_data.host_pointer(sample, 0);
         auto out = out_data.host_pointer(sample, 0);
         {
-          auto bias_pointer = bias.host_pointer(0, 0);
+          auto bias_pointer = bias.data()->host_pointer(0);
           for (size_t i = 0; i < nblocks; ++i) {
             __m256 b = _mm256_loadu_ps(&bias_pointer[8 * i]);
             _mm256_storeu_ps(&*std::next(out, 8 * i), b);
           }
-          auto b = _mm256_maskload_ps(bias.host_pointer(0, 8 * nblocks), imask);
+          auto b =
+            _mm256_maskload_ps(bias.data()->host_pointer(8 * nblocks), imask);
           _mm256_maskstore_ps(&out[8 * nblocks], imask, b);
         }
-        auto W_pointer = W.host_pointer(0, 0);
+        auto W_pointer = weights.data()->host_pointer(0, 0);
         for (size_t c = 0; c < in_size; c++) {
           auto in_val = _mm256_set1_ps(in[c]);
           auto pW     = &W_pointer[c * out_size];
@@ -85,12 +86,12 @@ inline void avx_fully_connected_forward_kernel(const Tensor<float, S1> &in_data,
       for_i(layer_parallelize, in_data.shape()[0], [&](size_t sample) {
         auto in        = in_data.host_pointer(sample, 0);
         auto out       = out_data.host_pointer(sample, 0);
-        auto b_pointer = bias.host_pointer(0, 0);
+        auto b_pointer = bias.data()->host_pointer(0);
         for (size_t i = 0; i < nblocks; ++i) {
           __m256 b = _mm256_loadu_ps(&b_pointer[8 * i]);
           _mm256_storeu_ps(&out[8 * i], b);
         }
-        auto W_pointer = W.host_pointer(0, 0);
+        auto W_pointer = weights.data()->host_pointer(0, 0);
         for (size_t c = 0; c < in_size; c++) {
           auto in_val = _mm256_set1_ps(in[c]);
           auto pW     = &W_pointer[c * out_size];
@@ -110,7 +111,7 @@ inline void avx_fully_connected_forward_kernel(const Tensor<float, S1> &in_data,
       for (size_t i = 0; i < out_size; i++) {
         float sum = 0.0f;
         for (size_t c = 0; c < in_size; c++) {
-          sum += W.host_at(0, c * out_size + i) * *std::next(in, c);
+          sum += weights.data_at(c, i) * *std::next(in, c);
         }
         *std::next(out, i) = sum;
       }
@@ -122,21 +123,21 @@ inline void avx_fully_connected_forward_kernel(const Tensor<float, S1> &in_data,
  * Kernel for forward propogation for fully connected layer with AVX backend
  * (double precision). Currently calls for internal backend
  * @param in_data
- * @param W
+ * @param weights
  * @param bias
  * @param out_data
- * @param params
  * @param layer_parallelize
  */
-template <typename S1, typename S2, typename S3, typename S4>
+template <typename S1, typename S2>
 inline void avx_fully_connected_forward_kernel(
   const Tensor<double, S1> &in_data,
-  const Tensor<double, S2> &W,
-  const Tensor<double, S3> &bias,
-  Tensor<double, S4> &out_data,
+  Parameter &weights,
+  Parameter &bias,
+  Tensor<double, S2> &out_data,
   const bool layer_parallelize) {
   // fallback to tiny-backend when float_t is double
-  fully_connected_op_internal(in_data, W, bias, out_data, layer_parallelize);
+  fully_connected_op_internal(in_data, weights, bias, out_data,
+                              layer_parallelize);
 }
 
 /**
@@ -255,18 +256,18 @@ inline void avx_fully_connected_back_kernel(const Tensor<double, S1> &prev_out,
  * @param params
  * @param layer_parallelize
  */
-template <typename S1, typename S2, typename S3, typename S4>
+template <typename S1, typename S2>
 inline void fully_connected_op_avx(const Tensor<float_t, S1> &in_data,
-                                   const Tensor<float_t, S2> &W,
-                                   const Tensor<float_t, S3> &bias,
-                                   Tensor<float_t, S4> &out_data,
+                                   Parameter &weights,
+                                   Parameter &bias,
+                                   Tensor<float_t, S2> &out_data,
                                    const bool layer_parallelize) {
 #ifdef CNN_USE_AVX
-  avx_fully_connected_forward_kernel(in_data, W, bias, out_data,
+  avx_fully_connected_forward_kernel(in_data, weights, bias, out_data,
                                      layer_parallelize);
 #else
   CNN_UNREFERENCED_PARAMETER(in_data);
-  CNN_UNREFERENCED_PARAMETER(W);
+  CNN_UNREFERENCED_PARAMETER(weights);
   CNN_UNREFERENCED_PARAMETER(bias);
   CNN_UNREFERENCED_PARAMETER(out_data);
   CNN_UNREFERENCED_PARAMETER(layer_parallelize);
