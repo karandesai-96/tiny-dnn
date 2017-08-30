@@ -44,10 +44,10 @@ class fully_connected_layer : public layer {
                         bool bias                    = true,
                         core::backend_t backend_type = core::default_engine())
     : layer({vector_type::data}, {vector_type::data}) {
-    layer::add_parameter(1, 1, out_features, in_features,
-                         parameter_type::weight, true);
+    layer::add_parameter({in_features, out_features}, parameter_type::weight,
+                         true);
     if (bias) {
-      layer::add_parameter(1, 1, 1, out_features, parameter_type::bias, true);
+      layer::add_parameter({out_features}, parameter_type::bias, true);
     }
     set_params(in_features, out_features, bias);
     init_backend(backend_type);

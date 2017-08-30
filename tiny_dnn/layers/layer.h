@@ -353,6 +353,13 @@ class layer : public node {
       out_channels, in_channels, height, width, type, trainable));
   }
 
+  /** @brief Add new parameter to this layer, to be called in constructor. */
+  void add_parameter(std::vector<size_t> shape,
+                     parameter_type type,
+                     bool trainable = true) {
+    parameters_.push_back(std::make_shared<Parameter>(shape, type, trainable));
+  }
+
   /**
    * @brief Get pointers to parameters of this layer.
    *

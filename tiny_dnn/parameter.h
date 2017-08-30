@@ -65,8 +65,9 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
       shape_(0, 0, 0),  // todo (karandesai) : remove after generalization
       trainable_(trainable),
       initialized_(false),
-      data_(shape, 0),
-      grad_(shape, 0) {
+      data_(shape),
+      grad_(shape) {
+    data_.fill(0);
     grad_.repeat(1, data_);
   }
 
@@ -80,8 +81,6 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
       grad_(*(other.grad())) {}
 
   shape3d shape() const { return shape_; }
-
-  std::vector<size_t> shape() const { return data_.shape(); }
 
   size_t size() const { return data_.size(); }
 
