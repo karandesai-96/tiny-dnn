@@ -28,10 +28,10 @@ class FullyConnectedOp : public core::OpKernel {
     const Tensor<> &in_data = context.input(0);
     Tensor<> &out_data      = context.output(0);
 
-    // todo (karandesai): remove above tensors on integrating with all kernels
-    Parameter dummy({0}, parameter_type::bias);
-    Parameter &weights(*context.ith_parameter(0));
-    Parameter &bias(params.has_bias_ ? *(context.ith_parameter(1)) : dummy);
+    const Parameter dummy({0}, parameter_type::bias);
+    const Parameter &weights(*context.ith_parameter(0));
+    const Parameter &bias(params.has_bias_ ? *(context.ith_parameter(1))
+                                           : dummy);
 
     // initialize outputs
     out_data.fill(0);
@@ -52,8 +52,6 @@ class FullyConnectedOp : public core::OpKernel {
     } else {
       throw nn_error("Not supported engine: " + to_string(engine));
     }
-    // TODO(Randl): Remove once layers forward and backward by themself.
-    context.output(0) = out_data;
   }
 };
 

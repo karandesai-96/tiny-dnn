@@ -138,15 +138,50 @@ class Parameter : public std::enable_shared_from_this<Parameter> {
 
   void clear_grads() { grad_.fill(float_t{0}); }
 
+  /**
+   * @name Data and Grad Accessing Utilities
+   * @{
+   */
   template <typename... Args>
   float_t &data_at(const Args... args) {
     return data_.host_at(args...);
   }
 
   template <typename... Args>
-  float_t &grad_at(const size_t sample, const Args... args) {
+  float_t &grad_at(const size_t &sample, const Args... args) {
     return grad_.host_at(sample, args...);
   }
+
+  template <typename... Args>
+  float_t *data_pointer(const Args... args) {
+    return data_.host_pointer(args...);
+  }
+
+  template <typename... Args>
+  float_t *grad_pointer(const size_t &sample, const Args... args) {
+    return grad_.host_pointer(sample, args...);
+  }
+
+  template <typename... Args>
+  float_t data_at(const Args... args) const {
+    return data_.host_at(args...);
+  }
+
+  template <typename... Args>
+  float_t grad_at(const size_t &sample, const Args... args) const {
+    return grad_.host_at(sample, args...);
+  }
+
+  template <typename... Args>
+  const float_t *data_pointer(const Args... args) const {
+    return data_.host_pointer(args...);
+  }
+
+  template <typename... Args>
+  const float_t *grad_pointer(const size_t &sample, const Args... args) const {
+    return grad_.host_pointer(sample, args...);
+  }
+  /** @} */  // Data and Grad Accessing Utilities
 
   // todo (karandesai) : introduce support for HDF
   /**

@@ -17,14 +17,12 @@ namespace kernels {
  * @param in_data
  * @param weights
  * @param bias
- * @param out_data
- * @param params
  * @param layer_parallelize
  */
 template <typename S1, typename S2>
 inline void fully_connected_op_internal(const Tensor<float_t, S1> &in_data,
-                                        Parameter &weights,
-                                        Parameter &bias,
+                                        const Parameter &weights,
+                                        const Parameter &bias,
                                         Tensor<float_t, S2> &out_data,
                                         const bool layer_parallelize) {
   size_t out_size = out_data.shape()[1], in_size = in_data.shape()[1];
@@ -46,26 +44,18 @@ inline void fully_connected_op_internal(const Tensor<float_t, S1> &in_data,
 /**
  * Backward propogation for fully connected layer with internal backend
  * @param prev_out
- * @param weigths
- * @param weights_grads
- * @param bias_grads
+ * @param weights
+ * @param bias
  * @param curr_delta
  * @param prev_delta
- * @param params
  * @param layer_parallelize
  */
-template <typename S1,
-          typename S2,
-          typename S3,
-          typename S4,
-          typename S5,
-          typename S6>
+template <typename S1, typename S2, typename S3>
 inline void fully_connected_op_internal(const Tensor<float_t, S1> &prev_out,
-                                        const Tensor<float_t, S2> &weigths,
-                                        Tensor<float_t, S3> &weights_grads,
-                                        Tensor<float_t, S4> &bias_grads,
-                                        Tensor<float_t, S5> &curr_delta,
-                                        Tensor<float_t, S6> &prev_delta,
+                                        Parameter &weights,
+                                        Parameter &bias,
+                                        Tensor<float_t, S2> &curr_delta,
+                                        Tensor<float_t, S3> &prev_delta,
                                         const bool layer_parallelize) {
   size_t out_size = curr_delta.shape()[1], in_size = prev_delta.shape()[1],
          sample_num = prev_out.shape()[0];
@@ -73,26 +63,26 @@ inline void fully_connected_op_internal(const Tensor<float_t, S1> &prev_out,
     for (size_t c = 0; c < in_size; c++) {
       // propagate delta to previous layer
       // prev_delta[c] += current_delta[r] * W_[c * out_size_ + r]
-      prev_delta.host_at(sample, c) +=
-        vectorize::dot(curr_delta.host_pointer(sample, 0),
-                       weigths.host_pointer(c * out_size), out_size);
+      for (size_t i = 0; i < out_size; i++) {
+        prev_delta.host_at(sample, c) +=
+          curr_delta.host_at(sample, i) * weights.data_at(c, i);
+      }
     }
 
     for_(layer_parallelize, 0, size_t(out_size), [&](const blocked_range &r) {
       // accumulate weight-step using delta
       // dW[c * out_size + i] += current_delta[i] * prev_out[c]
-      auto curr_delta_pointer = curr_delta.host_pointer(sample, r.begin());
-      auto weights_pointer    = weights_grads.host_pointer(sample, 0);
       for (size_t c = 0; c < in_size; c++) {
-        vectorize::muladd(curr_delta_pointer, prev_out.host_at(sample, c),
-                          r.end() - r.begin(),
-                          &weights_pointer[c * out_size + r.begin()]);
+        for (size_t i = r.begin(); i < r.end(); i++) {
+          weights.grad_at(sample, c, i) +=
+            prev_out.host_at(sample, c) * curr_delta.host_at(sample, i);
+        }
       }
 
-      if (bias_grads.size() >= out_size) {
+      if (bias.grad()->size() >= out_size) {
         // vec_t& db = *in_grad[2];
         for (size_t i = r.begin(); i < r.end(); i++) {
-          bias_grads.host_at(sample, i) += curr_delta.host_at(sample, i);
+          bias.grad_at(sample, i) += curr_delta.host_at(sample, i);
         }
       }
     });

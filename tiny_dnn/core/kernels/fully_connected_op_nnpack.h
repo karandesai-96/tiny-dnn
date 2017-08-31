@@ -19,13 +19,12 @@ namespace kernels {
  * @param weights
  * @param bias
  * @param out_data
- * @param params
  * @param layer_parallelize
  */
 template <typename S1, typename S2>
 inline void fully_connected_op_nnpack(const Tensor<float, S1> &in_data,
-                                      Parameter &weights,
-                                      Parameter &bias,
+                                      const Parameter &weights,
+                                      const Parameter &bias,
                                       Tensor<float, S2> &out_data,
                                       const bool layer_parallelize) {
 #ifdef CNN_USE_NNPACK
@@ -77,13 +76,12 @@ inline void fully_connected_op_nnpack(const Tensor<float, S1> &in_data,
  * @param weights
  * @param bias
  * @param out_data
- * @param params
  * @param layer_parallelize
  */
 template <typename S1, typename S2>
 inline void fully_connected_op_nnpack(const Tensor<double, S1> &in_data,
-                                      Parameter &weights,
-                                      Parameter &bias,
+                                      const Parameter &weights,
+                                      const Parameter &bias,
                                       Tensor<double, S2> &out_data,
                                       const bool layer_parallelize) {
   // fallback to tiny-backend when float_t is double
